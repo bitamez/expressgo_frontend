@@ -15,19 +15,7 @@ export default defineConfig({
         description: 'Ethiopia\'s Premium Bus Service',
         theme_color: '#f59e0b',
         background_color: '#0a0a0c',
-        display: "standalone",
-        icons: [
-          {
-            src: '/vite.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: '/vite.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml'
-          }
-        ]
+        display: "standalone"
       }
     }),
   ],
