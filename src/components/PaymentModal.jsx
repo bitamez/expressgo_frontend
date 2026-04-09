@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, Wallet, Smartphone, X, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
   const [selectedMethod, setSelectedMethod] = useState(null);
@@ -22,11 +23,18 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
       const endpoint = `${baseUrl}/bookings/payments/${selectedMethod}/`;
       
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const res = await axios.post(endpoint, {
         amount,
         first_name: bookingDetails?.passenger_name || 'Customer',
         email: bookingDetails?.email || 'customer@example.com',
         trip_id: bookingDetails?.id || 1,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (res.data.checkout_url) {
