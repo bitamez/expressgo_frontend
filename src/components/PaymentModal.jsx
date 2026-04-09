@@ -26,15 +26,17 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
+      // Use the logged-in user's real email
+      const userEmail = session?.user?.email || bookingDetails?.email || 'ticket@expressgo.et';
+      const firstName = userEmail.split('@')[0] || bookingDetails?.passenger_name || 'Customer';
+
       const res = await axios.post(endpoint, {
         amount,
-        first_name: bookingDetails?.passenger_name || 'Customer',
-        email: bookingDetails?.email || 'customer@example.com',
-        trip_id: bookingDetails?.id || 1,
+        first_name: firstName,
+        email: userEmail,
+        trip_id: bookingDetails?.id || bookingDetails?.schedule_id || 'N-A',
       }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
 
       if (res.data.checkout_url) {
