@@ -51,7 +51,22 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
     } catch (error) {
       console.error("Payment initialization failed", error);
       setIsProcessing(false);
-      alert("Payment Error: " + (error.response?.data?.message || error.response?.data?.detail || error.message || "Failed to connect to backend"));
+
+      // Safely extract a readable message — Chapa/DRF can return nested objects
+      const data = error.response?.data;
+      let errMsg = error.message || "Failed to connect to backend";
+      if (data) {
+        const raw = data.message || data.detail || data.error;
+        if (typeof raw === 'string') {
+          errMsg = raw;
+        } else if (raw !== undefined) {
+          errMsg = JSON.stringify(raw);
+        } else {
+          errMsg = JSON.stringify(data);
+        }
+      }
+
+      alert("Payment Error: " + errMsg);
     }
   };
 
