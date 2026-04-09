@@ -51,7 +51,7 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
     } catch (error) {
       console.error("Payment initialization failed", error);
       setIsProcessing(false);
-      alert("Payment Error: " + (error.response?.data?.message || "Check if Django backend is running."));
+      alert("Payment Error: " + (error.response?.data?.message || error.response?.data?.detail || error.message || "Failed to connect to backend"));
     }
   };
 
