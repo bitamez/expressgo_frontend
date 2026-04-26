@@ -10,10 +10,13 @@ export const useAI = () => {
     setLoading(true);
     setError(null);
     try {
+      // aiService.getRecommendations() never throws — returns live or fallback data
       const data = await aiService.getRecommendations();
-      setRecommendations(data);
+      setRecommendations(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Failed to fetch AI suggestions');
+      // Shouldn't reach here, but kept as a safety net
+      console.warn('Unexpected error in useAI:', err.message);
+      setError(null); // Don't show error banner; fallback data is already shown
     } finally {
       setLoading(false);
     }
