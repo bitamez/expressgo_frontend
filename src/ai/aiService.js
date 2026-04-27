@@ -54,11 +54,18 @@ const aiService = {
       const response = await axios.post(
         `${API_BASE_URL}/ai/chat/`,
         { message },
-        { timeout: 15000 }
+        { 
+          timeout: 15000,
+          headers: { 'Content-Type': 'application/json' } 
+        }
       );
       return response.data; // { response: "..." }
     } catch (error) {
-      console.warn('AI Chat unreachable, using offline fallback:', error.message);
+      if (error.response?.status === 405) {
+        console.error("Method Not Allowed: Check if the endpoint expects POST.");
+      } else {
+        console.warn('AI Chat unreachable, using offline fallback:', error.message);
+      }
       // Return a friendly offline message instead of throwing
       return { response: OFFLINE_CHAT_RESPONSE };
     }
