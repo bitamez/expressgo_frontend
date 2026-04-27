@@ -55,7 +55,7 @@ const aiService = {
         `${API_BASE_URL}/ai/chat/`,
         { message },
         { 
-          timeout: 15000,
+          timeout: 45000,
           headers: { 'Content-Type': 'application/json' } 
         }
       );
