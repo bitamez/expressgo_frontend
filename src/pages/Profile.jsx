@@ -26,7 +26,7 @@ const Profile = () => {
         setName(user.user_metadata?.name || 'New Passenger');
         
         // Fetch real bookings
-        const { data: bookings } = await supabase
+        const { data: bookings, error } = await supabase
           .from('bookings')
           .select(`
             booking_id,
@@ -40,10 +40,14 @@ const Profile = () => {
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (bookings) {
+        if (error) {
+          console.error("Failed to fetch bookings:", error);
+        }
+
+        if (bookings && bookings.length > 0) {
           const history = bookings.map(b => ({
-            from: b.schedule?.route?.source_en || 'Unknown',
-            to: b.schedule?.route?.destination_en || 'Unknown',
+            from: b.schedule?.route?.source_en || 'Express Route',
+            to: b.schedule?.route?.destination_en || 'Destination',
             date: b.schedule?.travel_date || new Date(b.created_at).toLocaleDateString(),
             status: 'Confirmed'
           }));
@@ -52,6 +56,8 @@ const Profile = () => {
             tickets_count: bookings.length,
             history: history
           }));
+        } else if (bookings && bookings.length === 0) {
+          // No bookings
         }
       } else {
         navigate('/login');
