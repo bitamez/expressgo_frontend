@@ -11,22 +11,54 @@ const Profile = () => {
   const [name, setName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const stats = {
+  const [stats, setStats] = useState({
     tier: 'Gold Member',
     tickets_count: 0,
     bonus_rides: 0,
     history: []
-  };
+  });
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const fetchUserAndBookings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         setName(user.user_metadata?.name || 'New Passenger');
+        
+        // Fetch real bookings
+        const { data: bookings } = await supabase
+          .from('bookings')
+          .select(`
+            booking_id,
+            created_at,
+            schedule:schedules (
+               departure_time,
+               travel_date,
+               route:routes ( source_en, destination_en )
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (bookings) {
+          const history = bookings.map(b => ({
+            from: b.schedule?.route?.source_en || 'Unknown',
+            to: b.schedule?.route?.destination_en || 'Unknown',
+            date: b.schedule?.travel_date || new Date(b.created_at).toLocaleDateString(),
+            status: 'Confirmed'
+          }));
+          setStats(prev => ({
+            ...prev,
+            tickets_count: bookings.length,
+            history: history
+          }));
+        }
       } else {
         navigate('/login');
       }
-    });
+    };
+
+    fetchUserAndBookings();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {

@@ -34,6 +34,8 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
         amount,
         first_name: firstName,
         email: userEmail,
+        user_id: session?.user?.id,
+        seat: bookingDetails?.seat,
         trip_id: bookingDetails?.id || bookingDetails?.schedule_id || 'N-A',
       }, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
