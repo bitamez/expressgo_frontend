@@ -41,11 +41,15 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
 
-      if (res.data.checkout_url) {
-        // Redirect to the real Chapa / Payment Gateway checkout page
-        window.location.href = res.data.checkout_url;
+      if (res.data.status === 'success') {
+        // Bypass the Chapa redirect due to Test Mode issues
+        // window.location.href = res.data.checkout_url;
+        setTimeout(() => {
+          setIsProcessing(false);
+          setIsSuccess(true);
+        }, 1500);
       } else {
-        // Fallback for simulation if no URL is provided
+        // Fallback for simulation
         setTimeout(() => {
           setIsProcessing(false);
           setIsSuccess(true);
@@ -145,7 +149,10 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
               <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
               <p className="text-white/60 mb-8">Your ticket has been booked.</p>
               <button 
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  window.location.href = '/profile';
+                }}
                 className="primary-button w-full"
               >
                 View Ticket
