@@ -41,19 +41,16 @@ const PaymentModal = ({ isOpen, onClose, amount, bookingDetails }) => {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
 
-      if (res.data.status === 'success') {
-        // Bypass the Chapa redirect due to Test Mode issues
-        // window.location.href = res.data.checkout_url;
-        setTimeout(() => {
-          setIsProcessing(false);
-          setIsSuccess(true);
-        }, 1500);
+      if (res.data.status === 'success' && res.data.checkout_url) {
+        // Store tx_ref so Profile page can verify payment after Chapa redirect
+        sessionStorage.setItem('pending_tx_ref', res.data.tx_ref || '');
+        sessionStorage.setItem('pending_user_id', session?.user?.id || '');
+        // Redirect to Chapa's real checkout page
+        window.location.href = res.data.checkout_url;
       } else {
-        // Fallback for simulation
-        setTimeout(() => {
-          setIsProcessing(false);
-          setIsSuccess(true);
-        }, 1500);
+        setIsProcessing(false);
+        const errMsg = res.data.message || 'Could not get checkout URL from Chapa.';
+        alert('Payment Error: ' + errMsg);
       }
 
     } catch (error) {

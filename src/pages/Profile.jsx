@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Ticket, Award, Settings, Bell, ChevronRight, LogOut, Clock, MapPin, Sparkles, Check, X } from 'lucide-react';
+import axios from 'axios';
+import { User, Ticket, Award, Settings, Bell, ChevronRight, LogOut, Clock, MapPin, Sparkles, Check, X, CheckCircle2, Loader2 } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -10,6 +13,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null); // 'verifying' | 'success' | 'failed' | null
 
   const [stats, setStats] = useState({
     tier: 'Gold Member',
@@ -18,78 +22,120 @@ const Profile = () => {
     history: []
   });
 
-  useEffect(() => {
-    const fetchUserAndBookings = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-        setName(user.user_metadata?.name || 'New Passenger');
-        
-        // Fetch real bookings
-        const { data: bookings, error } = await supabase
-          .from('bookings')
-          .select(`
-            booking_id,
-            created_at,
-            schedule:schedules (
-               departure_time,
-               travel_date,
-               route:routes ( source_en, destination_en )
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+  const fetchBookings = async (userId) => {
+    try {
+      // Primary: fetch from Django backend
+      const res = await axios.get(`${API_BASE}/bookings/my-bookings/?user_id=${userId}`, { timeout: 10000 });
+      if (res.data.status === 'success' && res.data.bookings.length > 0) {
+        setStats(prev => ({
+          ...prev,
+          tickets_count: res.data.count,
+          history: res.data.bookings
+        }));
+        return;
+      }
+    } catch (err) {
+      console.warn('Django bookings fetch failed, falling back to Supabase:', err.message);
+    }
 
-        if (error) {
-          console.error("Failed to fetch bookings:", error);
-        }
+    // Fallback: fetch from Supabase directly
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select(`
+        booking_id,
+        created_at,
+        schedule:schedules (
+           departure_time,
+           travel_date,
+           route:routes ( source_en, destination_en )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-        if (bookings && bookings.length > 0) {
-          const history = bookings.map(b => ({
-            from: b.schedule?.route?.source_en || 'Express Route',
-            to: b.schedule?.route?.destination_en || 'Destination',
-            date: b.schedule?.travel_date || new Date(b.created_at).toLocaleDateString(),
-            status: 'Confirmed'
-          }));
-          setStats(prev => ({
-            ...prev,
-            tickets_count: bookings.length,
-            history: history
-          }));
-        } else if (bookings && bookings.length === 0) {
-          // No bookings
-        }
+    if (error) {
+      console.error('Supabase bookings error:', error);
+      return;
+    }
+
+    if (bookings && bookings.length > 0) {
+      const history = bookings.map(b => ({
+        booking_id: b.booking_id,
+        from: b.schedule?.route?.source_en || 'Express Route',
+        to: b.schedule?.route?.destination_en || 'Destination',
+        date: b.schedule?.travel_date || new Date(b.created_at).toLocaleDateString(),
+        departure: b.schedule?.departure_time || '',
+        seat: '',
+        status: 'Confirmed',
+        created_at: b.created_at,
+      }));
+      setStats(prev => ({
+        ...prev,
+        tickets_count: bookings.length,
+        history
+      }));
+    }
+  };
+
+  const verifyPayment = async (txRef, userId) => {
+    setPaymentStatus('verifying');
+    try {
+      const res = await axios.get(`${API_BASE}/bookings/payments/chapa/verify/?tx_ref=${txRef}`, { timeout: 15000 });
+      if (res.data.status === 'success') {
+        setPaymentStatus('success');
+        // Refresh bookings after verification
+        await fetchBookings(userId);
       } else {
-        navigate('/login');
+        setPaymentStatus('failed');
+      }
+    } catch (err) {
+      console.error('Verification error:', err.message);
+      setPaymentStatus('failed');
+    }
+    // Clean up sessionStorage
+    sessionStorage.removeItem('pending_tx_ref');
+    sessionStorage.removeItem('pending_user_id');
+    // Clean tx_ref from URL without reload
+    const url = new URL(window.location.href);
+    url.searchParams.delete('tx_ref');
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { navigate('/login'); return; }
+
+      setUser(user);
+      setName(user.user_metadata?.name || 'New Passenger');
+
+      // Check if Chapa just redirected back with a tx_ref
+      const urlParams = new URLSearchParams(window.location.search);
+      const txRefFromUrl = urlParams.get('tx_ref');
+      const txRefFromStorage = sessionStorage.getItem('pending_tx_ref');
+      const txRef = txRefFromUrl || txRefFromStorage;
+
+      if (txRef) {
+        await verifyPayment(txRef, user.id);
+      } else {
+        await fetchBookings(user.id);
       }
     };
 
-    fetchUserAndBookings();
+    init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          navigate('/login');
-        }
-      }
-    );
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') navigate('/login');
+    });
     return () => authListener.subscription.unsubscribe();
   }, [navigate]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
 
   const handleSave = async () => {
     setIsSaving(true);
-    const { data, error } = await supabase.auth.updateUser({
-      data: { name: name }
-    });
-    
-    if (!error) {
-      setUser(data.user);
-      setIsEditing(false);
-    }
+    const { data, error } = await supabase.auth.updateUser({ data: { name } });
+    if (!error) { setUser(data.user); setIsEditing(false); }
     setIsSaving(false);
   };
 
@@ -97,8 +143,32 @@ const Profile = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-10 space-y-8">
+
+      {/* Payment Verification Banner */}
+      {paymentStatus === 'verifying' && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-4 flex items-center gap-3 border-yellow-500/30 bg-yellow-500/5">
+          <Loader2 size={20} className="text-yellow-400 animate-spin" />
+          <p className="text-yellow-300 font-medium">Verifying your payment with Chapa...</p>
+        </motion.div>
+      )}
+      {paymentStatus === 'success' && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-4 flex items-center gap-3 border-green-500/30 bg-green-500/5">
+          <CheckCircle2 size={20} className="text-green-400" />
+          <p className="text-green-300 font-medium">Payment confirmed! Your ticket has been booked. ✨</p>
+        </motion.div>
+      )}
+      {paymentStatus === 'failed' && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-4 flex items-center gap-3 border-red-500/30 bg-red-500/5">
+          <X size={20} className="text-red-400" />
+          <p className="text-red-300 font-medium">Payment verification pending. Your booking will appear shortly if payment succeeded.</p>
+        </motion.div>
+      )}
+
       {/* Header Profile Card */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-card p-10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden"
@@ -119,10 +189,10 @@ const Profile = () => {
         <div className="text-center md:text-left space-y-2 flex-1 w-full z-10">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
              {isEditing ? (
-               <input 
+               <input
                  autoFocus
-                 type="text" 
-                 value={name} 
+                 type="text"
+                 value={name}
                  onChange={(e) => setName(e.target.value)}
                  className="bg-black/50 border border-primary-500/50 rounded-xl px-4 py-2 text-3xl font-bold text-white outline-none w-full md:w-auto focus:border-primary-500 transition-colors"
                  placeholder="Enter your name"
@@ -130,7 +200,7 @@ const Profile = () => {
              ) : (
                <h1 className="text-4xl font-bold text-white">{name}</h1>
              )}
-             
+
              {!isEditing && (
                <span className="bg-primary-500/10 text-primary-500 border border-primary-500/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest self-start md:self-auto">
                   {stats.tier}
@@ -196,7 +266,7 @@ const Profile = () => {
         ) : (
           <div className="space-y-4">
             {stats.history.map((item, index) => (
-              <div key={index} className="glass-card px-8 py-6 flex items-center justify-between group hover:bg-white/5 transition-all">
+              <div key={item.booking_id || index} className="glass-card px-8 py-6 flex items-center justify-between group hover:bg-white/5 transition-all">
                  <div className="flex items-center gap-6">
                     <div className="p-3 bg-white/5 rounded-xl text-white/40 group-hover:text-primary-500 transition-colors">
                       <Clock size={20} />
@@ -205,7 +275,9 @@ const Profile = () => {
                       <h5 className="font-bold text-lg flex items-center gap-2">
                         {item.from} <ChevronRight size={14} className="text-white/20" /> {item.to}
                       </h5>
-                      <p className="text-white/40 text-sm">{item.date}</p>
+                      <p className="text-white/40 text-sm">
+                        {item.date}{item.seat ? ` · Seat ${item.seat}` : ''}{item.departure ? ` · ${item.departure}` : ''}
+                      </p>
                     </div>
                  </div>
                  <span className="bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border border-green-500/20">
