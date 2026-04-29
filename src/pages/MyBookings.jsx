@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { Clock, ChevronRight, Ticket, MapPin, Calendar, Bus, Printer, XCircle } from 'lucide-react';
+import { Clock, ChevronRight, Ticket, MapPin, Calendar, Bus, Printer, XCircle, User, Info } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
 
@@ -43,6 +43,9 @@ const MyBookings = () => {
     if (fallbackBookings) {
       setBookings(fallbackBookings.map(b => ({
         booking_id: b.booking_id,
+        passenger_name: user?.user_metadata?.name || 'Passenger',
+        bus_name: 'Express Bus',
+        bus_number: '',
         from: b.schedule?.route?.source_en || 'Express Route',
         to: b.schedule?.route?.destination_en || 'Destination',
         date: b.schedule?.travel_date || new Date(b.created_at).toLocaleDateString(),
@@ -96,7 +99,7 @@ const MyBookings = () => {
   if (isLoading) return <div className="p-10 text-center text-white/50">Loading bookings...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 space-y-8 print:py-0 print:space-y-4">
+    <div className="max-w-4xl mx-auto py-10 space-y-8 print:p-0 print:m-0 print:space-y-0">
       <div className="flex items-center gap-4 mb-8 print:hidden">
         <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center border border-primary-500/20">
           <Ticket size={24} />
@@ -106,6 +109,15 @@ const MyBookings = () => {
           <p className="text-white/50 text-sm">View and manage your travel history</p>
         </div>
       </div>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-container, .print-container * { visibility: visible; }
+          .print-container { position: absolute; left: 0; top: 0; width: 100%; height: auto; display: block !important; padding: 20px; }
+          @page { margin: 0; size: auto; }
+        }
+      `}</style>
 
       {bookings.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-16 text-center flex flex-col items-center gap-4">
@@ -152,7 +164,14 @@ const MyBookings = () => {
                   </div>
 
                   {/* Details Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-4">
+                    <div className="bg-white/5 p-3 rounded-lg flex items-center gap-3">
+                      <User size={16} className="text-primary-500" />
+                      <div>
+                        <p className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Passenger</p>
+                        <p className="font-medium text-white/90 truncate max-w-[120px]" title={item.passenger_name}>{item.passenger_name}</p>
+                      </div>
+                    </div>
                     <div className="bg-white/5 p-3 rounded-lg flex items-center gap-3">
                       <Calendar size={16} className="text-primary-500" />
                       <div>
@@ -165,6 +184,16 @@ const MyBookings = () => {
                       <div>
                         <p className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Time</p>
                         <p className="font-medium text-white/90">{item.departure}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-4 text-sm">
+                    <div className="bg-white/5 p-3 rounded-lg flex items-center gap-3">
+                      <Info size={16} className="text-primary-500" />
+                      <div>
+                        <p className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Bus Info</p>
+                        <p className="font-medium text-white/90 truncate">{item.bus_name} {item.bus_number && `(${item.bus_number})`}</p>
                       </div>
                     </div>
                     <div className="bg-white/5 p-3 rounded-lg flex items-center gap-3">
@@ -199,6 +228,72 @@ const MyBookings = () => {
                 </div>
 
               </div>
+              
+              {/* --- Hidden Print-Only Ticket View --- */}
+              {item.status === 'Confirmed' && (
+                <div className="hidden print-container text-black bg-white rounded-2xl overflow-hidden shadow-2xl mx-auto w-full max-w-[800px] border-2 border-gray-200">
+                  {/* Top Header */}
+                  <div className="bg-[#facc15] px-8 py-6 flex justify-between items-center border-b-4 border-black">
+                    <div className="flex items-center gap-3 text-black">
+                      <Bus size={32} className="text-black" />
+                      <h2 className="text-2xl font-black tracking-tight">EXPRESS<span className="font-light">GO</span></h2>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold uppercase tracking-widest text-black/60">Boarding Pass</p>
+                      <p className="text-xl font-black">TICKET #{item.booking_id}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row">
+                    {/* Main Ticket Body */}
+                    <div className="p-8 flex-1 border-r-2 border-dashed border-gray-300 relative">
+                      <div className="flex justify-between items-center mb-8 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div>
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">From</p>
+                          <h3 className="text-3xl font-black">{item.from}</h3>
+                        </div>
+                        <ChevronRight size={32} className="text-gray-300" />
+                        <div className="text-right">
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">To</p>
+                          <h3 className="text-3xl font-black">{item.to}</h3>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-y-6 gap-x-4 mb-6">
+                        <div>
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider mb-1">Passenger Name</p>
+                          <p className="text-lg font-bold text-black">{item.passenger_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider mb-1">Date</p>
+                          <p className="text-lg font-bold text-black">{item.date}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider mb-1">Bus Info</p>
+                          <p className="text-lg font-bold text-black">{item.bus_name} {item.bus_number && `(${item.bus_number})`}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase font-bold text-gray-500 tracking-wider mb-1">Departure Time</p>
+                          <p className="text-lg font-bold text-black">{item.departure}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Stub */}
+                    <div className="p-8 w-[250px] bg-gray-50 flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 text-center relative">
+                      {/* Fake QR Code */}
+                      <div className="w-32 h-32 bg-white border-2 border-black p-2 flex flex-wrap gap-1 mb-6">
+                        {[...Array(64)].map((_, i) => (
+                          <div key={i} className={`w-3 h-3 ${Math.random() > 0.5 ? 'bg-black' : 'bg-transparent'}`}></div>
+                        ))}
+                      </div>
+                      
+                      <p className="text-xs uppercase font-bold text-gray-500 tracking-wider mb-1">Seat Number</p>
+                      <h2 className="text-5xl font-black text-black">{item.seat || 'ANY'}</h2>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
