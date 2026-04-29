@@ -77,28 +77,40 @@ const Profile = () => {
     }
   };
 
-  const verifyPayment = async (txRef, userId) => {
+  const verifyPayment = async (txRef, userId, retryCount = 0) => {
     setPaymentStatus('verifying');
     try {
       const res = await axios.get(`${API_BASE}/bookings/payments/chapa/verify/?tx_ref=${txRef}`, { timeout: 15000 });
+
       if (res.data.status === 'success') {
         setPaymentStatus('success');
-        // Refresh bookings after verification
         await fetchBookings(userId);
-      } else {
+        // Clean up only on final success
+        sessionStorage.removeItem('pending_tx_ref');
+        sessionStorage.removeItem('pending_user_id');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tx_ref');
+        window.history.replaceState({}, '', url.toString());
+      }
+      else if (res.data.status === 'pending' && retryCount < 3) {
+        // If pending, wait 3 seconds and try again (up to 3 times)
+        setTimeout(() => verifyPayment(txRef, userId, retryCount + 1), 3000);
+      }
+      else {
         setPaymentStatus('failed');
+        // Still fetch bookings — the booking may exist as 'Pending' in DB
+        await fetchBookings(userId);
+        sessionStorage.removeItem('pending_tx_ref');
+        sessionStorage.removeItem('pending_user_id');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tx_ref');
+        window.history.replaceState({}, '', url.toString());
       }
     } catch (err) {
       console.error('Verification error:', err.message);
       setPaymentStatus('failed');
+      await fetchBookings(userId);
     }
-    // Clean up sessionStorage
-    sessionStorage.removeItem('pending_tx_ref');
-    sessionStorage.removeItem('pending_user_id');
-    // Clean tx_ref from URL without reload
-    const url = new URL(window.location.href);
-    url.searchParams.delete('tx_ref');
-    window.history.replaceState({}, '', url.toString());
   };
 
   useEffect(() => {
