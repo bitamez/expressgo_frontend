@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { Clock, ChevronRight, Ticket, MapPin, Calendar, Bus } from 'lucide-react';
+import { Clock, ChevronRight, Ticket, MapPin, Calendar, Bus, Printer, XCircle } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
 
@@ -55,6 +55,31 @@ const MyBookings = () => {
     setIsLoading(false);
   };
 
+  const handleCancel = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return;
+    
+    try {
+      const res = await axios.post(`${API_BASE}/bookings/cancel/`, {
+        booking_id: bookingId,
+        user_id: user.id
+      });
+      if (res.data.status === 'success') {
+        alert('Booking cancelled successfully.');
+        await fetchBookings(user.id); // Refresh
+      } else {
+        alert('Failed to cancel: ' + res.data.message);
+      }
+    } catch (err) {
+      alert('Error cancelling booking: ' + err.message);
+    }
+  };
+
+  const handlePrint = (bookingId) => {
+    // A simple print mechanism. Ideally we'd pop open a PDF or a specific print view.
+    // Here we'll just use window.print() and rely on CSS to hide non-ticket elements.
+    window.print();
+  };
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -71,8 +96,8 @@ const MyBookings = () => {
   if (isLoading) return <div className="p-10 text-center text-white/50">Loading bookings...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 space-y-8">
-      <div className="flex items-center gap-4 mb-8">
+    <div className="max-w-4xl mx-auto py-10 space-y-8 print:py-0 print:space-y-4">
+      <div className="flex items-center gap-4 mb-8 print:hidden">
         <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center border border-primary-500/20">
           <Ticket size={24} />
         </div>
@@ -109,6 +134,8 @@ const MyBookings = () => {
                     <span className={`text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${
                       item.status === 'Confirmed'
                         ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                        : item.status === 'Cancelled'
+                        ? 'bg-red-500/10 text-red-500 border-red-500/20'
                         : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                     }`}>
                       {item.status}
@@ -148,6 +175,27 @@ const MyBookings = () => {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Actions (Hidden when printing) */}
+                  <div className="mt-6 flex justify-end gap-3 print:hidden border-t border-white/5 pt-4">
+                    {item.status !== 'Cancelled' && (
+                      <button 
+                        onClick={() => handleCancel(item.booking_id)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-red-400 hover:bg-red-400/10 transition-colors border border-transparent hover:border-red-400/20"
+                      >
+                        <XCircle size={16} /> Cancel
+                      </button>
+                    )}
+                    {item.status === 'Confirmed' && (
+                      <button 
+                        onClick={() => handlePrint(item.booking_id)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                      >
+                        <Printer size={16} /> Print Ticket
+                      </button>
+                    )}
+                  </div>
+
                 </div>
 
               </div>
