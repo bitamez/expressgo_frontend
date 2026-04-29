@@ -173,9 +173,12 @@ const Profile = () => {
       )}
       {paymentStatus === 'failed' && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-4 flex items-center gap-3 border-red-500/30 bg-red-500/5">
-          <X size={20} className="text-red-400" />
-          <p className="text-red-300 font-medium">Payment verification pending. Your booking will appear shortly if payment succeeded.</p>
+          className="glass-card p-4 flex items-center gap-3 border-yellow-500/30 bg-yellow-500/5">
+          <Loader2 size={20} className="text-yellow-400" />
+          <div>
+            <p className="text-yellow-300 font-medium">Your booking is saved — payment pending.</p>
+            <p className="text-yellow-300/60 text-xs mt-0.5">Complete your payment on Chapa to confirm your ticket.</p>
+          </div>
         </motion.div>
       )}
 
@@ -292,7 +295,11 @@ const Profile = () => {
                       </p>
                     </div>
                  </div>
-                 <span className="bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border border-green-500/20">
+                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border ${
+                   item.status === 'Confirmed'
+                     ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                     : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                 }`}>
                    {item.status}
                  </span>
               </div>
