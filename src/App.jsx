@@ -13,6 +13,8 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Support from './pages/Support';
 import ComingSoon from './pages/ComingSoon';
+import MyBookings from './pages/MyBookings';
+import Rewards from './pages/Rewards';
 import { Info, Briefcase, Newspaper, Users, Calendar } from 'lucide-react';
 
 import ChatWidget from './components/ChatWidget';
@@ -35,8 +37,8 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/bookings" element={<ComingSoon title="My Bookings" icon={Briefcase} />} />
-            <Route path="/rewards" element={<ComingSoon title="ExpressGo Rewards" icon={Users} />} />
+            <Route path="/bookings" element={<MyBookings />} />
+            <Route path="/rewards" element={<Rewards />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/support" element={<Support />} />
