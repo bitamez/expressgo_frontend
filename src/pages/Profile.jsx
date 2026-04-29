@@ -24,13 +24,13 @@ const Profile = () => {
 
   const fetchBookings = async (userId) => {
     try {
-      // Primary: fetch from Django backend
+      // Primary: fetch from Django backend (includes both pending and confirmed bookings)
       const res = await axios.get(`${API_BASE}/bookings/my-bookings/?user_id=${userId}`, { timeout: 10000 });
-      if (res.data.status === 'success' && res.data.bookings.length > 0) {
+      if (res.data.status === 'success') {
         setStats(prev => ({
           ...prev,
-          tickets_count: res.data.count,
-          history: res.data.bookings
+          tickets_count: res.data.bookings.filter(b => b.status === 'Confirmed').length,
+          history: res.data.bookings   // show all (confirmed + pending)
         }));
         return;
       }
