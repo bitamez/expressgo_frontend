@@ -21,6 +21,20 @@ const Login = () => {
     setLoading(false);
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/profile`,
+        },
+      });
+      if (error) setError(error.message);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] py-12 px-6">
       <motion.div 
@@ -104,7 +118,11 @@ const Login = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          <button className="glass-button flex items-center justify-center space-x-2 w-full">
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin} 
+            className="glass-button flex items-center justify-center space-x-2 w-full"
+          >
             <UserPlus className="w-5 h-5" />
             <span>Continue with Google</span>
           </button>
