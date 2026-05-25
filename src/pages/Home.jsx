@@ -15,6 +15,7 @@ const Home = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null);
+  const [bookedSeats, setBookedSeats] = useState([]);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
   
@@ -50,9 +51,22 @@ const Home = () => {
     }
   };
 
-  const handleScheduleSelect = (schedule) => {
+  const handleScheduleSelect = async (schedule) => {
     setSelectedSchedule(schedule);
     setSelectedSeat(null);
+    setBookedSeats([]);
+    
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
+      const response = await fetch(`${baseUrl}/bookings/booked-seats/?schedule_id=${schedule.schedule_id}`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        setBookedSeats(data.booked_seats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch booked seats:", error);
+    }
+
     setTimeout(() => {
       document.getElementById('seat-selection-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -187,7 +201,7 @@ const Home = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start"
               >
-                <SeatMap busId={selectedSchedule.bus.bus_id} onSeatSelect={(seat) => setSelectedSeat(seat)} />
+                <SeatMap busId={selectedSchedule.bus.bus_id} bookedSeats={bookedSeats} onSeatSelect={(seat) => setSelectedSeat(seat)} />
                 
                 <div className="glass-card p-8 space-y-8 sticky top-32">
                   <h3 className="text-2xl font-bold">Booking Summary</h3>

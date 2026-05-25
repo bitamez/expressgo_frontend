@@ -2,15 +2,12 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Info } from 'lucide-react';
 
-const SeatMap = ({ busId, onSeatSelect }) => {
+const SeatMap = ({ busId, bookedSeats = [], onSeatSelect }) => {
   const [selectedSeat, setSelectedSeat] = useState(null);
   
   // Generating a sample 2x2 layout for a bus
   const rows = 12;
   const layout = ['A', 'B', 'C', 'D']; // A & B | Aisle | C & D
-  
-  // Simulated booked seats
-  const bookedSeats = [2, 5, 8, 12, 19, 25, 30, 42];
 
   const handleSeatClick = (seatNum) => {
     if (bookedSeats.includes(seatNum)) return;
