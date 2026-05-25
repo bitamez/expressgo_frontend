@@ -172,7 +172,7 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-primary-500">450 <span className="text-xs">ETB</span></div>
+                      <div className="text-2xl font-bold text-primary-500">{schedule.price} <span className="text-xs">ETB</span></div>
                     </div>
                   </div>
                 ))}
@@ -208,7 +208,7 @@ const Home = () => {
                     </div>
                     <div className="flex justify-between py-4 text-xl font-bold">
                       <span>Total</span>
-                      <span className="text-primary-500">450 ETB</span>
+                      <span className="text-primary-500">{selectedSchedule.price} ETB</span>
                     </div>
                   </div>
                   <button 
@@ -257,7 +257,7 @@ const Home = () => {
       <PaymentModal 
         isOpen={isPaymentOpen} 
         onClose={() => setIsPaymentOpen(false)} 
-        amount={450} 
+        amount={selectedSchedule ? selectedSchedule.price : 0} 
         bookingDetails={selectedSchedule ? {
           schedule_id: selectedSchedule.schedule_id,
           bus: selectedSchedule.bus.bus_name,
