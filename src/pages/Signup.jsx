@@ -31,6 +31,18 @@ const Signup = () => {
         if (signupError) {
             setError(signupError.message);
         } else {
+            // Fire-and-forget welcome email via backend
+            try {
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
+                await fetch(`${API_BASE}/users/welcome-email/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, full_name: fullName }),
+                });
+            } catch (_) {
+                // Email failure must never block the user flow
+            }
+
             // Check if Supabase auto-logged the user in
             if (data.session) {
                 navigate('/');
