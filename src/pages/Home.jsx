@@ -48,16 +48,31 @@ const Home = () => {
   }, []);
 
   const fetchUserStats = async (userId) => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
+      const res = await fetch(`${baseUrl}/bookings/my-bookings/?user_id=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          const confirmed = data.bookings.filter(b => b.status === 'Confirmed').length;
+          setTicketCount(confirmed);
+          setBonusRides(Math.floor(confirmed / 5));
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch stats from Django, falling back to Supabase", e);
+    }
+
+    // Fallback if Django is down: query all user bookings (assume confirmed)
     const { data, error } = await supabase
       .from('bookings')
-      .select('booking_id, status', { count: 'exact' })
-      .eq('user_id', userId)
-      .eq('status', 'Confirmed');
+      .select('booking_id')
+      .eq('user_id', userId);
 
     if (!error && data !== null) {
       const confirmed = data.length;
       setTicketCount(confirmed);
-      // 1 bonus ride for every 5 confirmed bookings
       setBonusRides(Math.floor(confirmed / 5));
     }
   };

@@ -33,18 +33,30 @@ const Rewards = () => {
       if (!user) { navigate('/login'); return; }
       setUser(user);
 
-      // Fetch real confirmed bookings count
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('booking_id', { count: 'exact' })
-        .eq('user_id', user.id)
-        .eq('status', 'Confirmed');
-
-      if (!error && data) {
-        const count = data.length;
-        setConfirmedCount(count);
-        setPoints(count * POINTS_PER_BOOKING);
+      let count = 0;
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://experessgo-backend-1.onrender.com/api';
+        const res = await fetch(`${baseUrl}/bookings/my-bookings/?user_id=${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'success') {
+            count = data.bookings.filter(b => b.status === 'Confirmed').length;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch stats from Django, falling back to Supabase", e);
+        // Fallback: query all user bookings (assume confirmed)
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('booking_id')
+          .eq('user_id', user.id);
+        if (!error && data) {
+          count = data.length;
+        }
       }
+
+      setConfirmedCount(count);
+      setPoints(count * POINTS_PER_BOOKING);
       setIsLoading(false);
     };
     init();
