@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { Search, MapPin, Calendar, Ticket, Sparkles, Clock, ArrowRight, Bus } fr
 import PaymentModal from '../components/PaymentModal';
 import SeatMap from '../components/SeatMap';
 import AIRecommendations from '../ai/AIRecommendations';
-import { LanguageProvider, useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const Home = () => {
   const { t } = useLanguage();
@@ -17,6 +17,8 @@ const Home = () => {
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [bookedSeats, setBookedSeats] = useState([]);
   const [session, setSession] = useState(null);
+  const [ticketCount, setTicketCount] = useState(null);
+  const [bonusRides, setBonusRides] = useState(null);
   const navigate = useNavigate();
   
   const [searchParams, setSearchParams] = useState({
@@ -25,9 +27,40 @@ const Home = () => {
     date: ''
   });
 
-  React.useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserStats(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserStats(session.user.id);
+      } else {
+        setTicketCount(null);
+        setBonusRides(null);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserStats = async (userId) => {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('booking_id, status', { count: 'exact' })
+      .eq('user_id', userId)
+      .eq('status', 'Confirmed');
+
+    if (!error && data !== null) {
+      const confirmed = data.length;
+      setTicketCount(confirmed);
+      // 1 bonus ride for every 5 confirmed bookings
+      setBonusRides(Math.floor(confirmed / 5));
+    }
+  };
 
   const handleProceed = async () => {
     if (!session) {
@@ -248,22 +281,43 @@ const Home = () => {
             {/* AI Recommendations Component */}
             <AIRecommendations />
 
-            {/* Fast Stats / Rewards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="glass-card p-6 flex flex-col justify-center relative overflow-hidden group hover:border-primary-500/30 transition-all cursor-pointer">
-                <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform text-white"><Ticket size={120} /></div>
-                <h3 className="text-xs uppercase font-bold tracking-widest text-primary-300">My Tickets</h3>
-                <p className="text-4xl font-bold text-white mt-1">12</p>
+            {/* Fast Stats / Rewards — real data from Supabase */}
+            {session && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* My Tickets */}
+                <div
+                  className="glass-card p-6 flex flex-col justify-center relative overflow-hidden group hover:border-primary-500/30 transition-all cursor-pointer"
+                  onClick={() => navigate('/bookings')}
+                >
+                  <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform" style={{ color: 'var(--text-primary)' }}>
+                    <Ticket size={120} />
+                  </div>
+                  <h3 className="text-xs uppercase font-bold tracking-widest text-primary-300">My Tickets</h3>
+                  <p className="text-4xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
+                    {ticketCount === null ? '—' : ticketCount}
+                  </p>
+                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Confirmed bookings</p>
+                </div>
+
+                {/* Bonus Rides */}
+                <div className="glass-card p-6 flex flex-col justify-center relative overflow-hidden group hover:border-primary-500/30 transition-all cursor-pointer border-primary-500/40 bg-primary-500/5">
+                  <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
+                    <Sparkles size={120} className="text-primary-500" />
+                  </div>
+                  <h3 className="text-xs uppercase font-bold tracking-widest text-primary-400">Bonus Rides</h3>
+                  <p className="text-4xl font-bold text-primary-400 mt-1">
+                    {bonusRides === null ? '—' : bonusRides}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>1 bonus per 5 trips</p>
+                  <button
+                    onClick={() => navigate('/rewards')}
+                    className="mt-4 bg-primary-500/20 hover:bg-primary-500/30 text-primary-300 text-xs px-4 py-2 rounded-lg font-medium self-start backdrop-blur-sm border border-primary-500/20 transition-colors"
+                  >
+                    {bonusRides > 0 ? 'Redeem Now' : 'View Rewards'}
+                  </button>
+                </div>
               </div>
-              <div className="glass-card p-6 flex flex-col justify-center relative overflow-hidden group hover:border-primary-500/30 transition-all cursor-pointer border-primary-500/40 bg-primary-500/5">
-                <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform"><Sparkles size={120} className="text-primary-500" /></div>
-                <h3 className="text-xs uppercase font-bold tracking-widest text-primary-400">Bonus Rides</h3>
-                <p className="text-4xl font-bold text-primary-400 mt-1">1</p>
-                <button className="mt-4 bg-primary-500/20 hover:bg-primary-500/30 text-primary-300 text-xs px-4 py-2 rounded-lg font-medium self-start backdrop-blur-sm border border-primary-500/20 transition-colors">
-                  Redeem Now
-                </button>
-              </div>
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
