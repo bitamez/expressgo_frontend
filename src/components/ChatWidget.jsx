@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Sparkles, ChevronRight, User, Send } from 'lucide-react';
+import { MessageCircle, Sparkles, User, Send } from 'lucide-react';
 import aiService from '../ai/aiService';
 
 const ChatWidget = ({ isOpen, toggle }) => {
@@ -39,11 +39,11 @@ const ChatWidget = ({ isOpen, toggle }) => {
     <div className="fixed bottom-8 right-8 z-[100]">
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="glass-card w-[380px] h-[500px] mb-6 flex flex-col overflow-hidden shadow-2xl border-white/20"
+            className="glass-card w-[380px] h-[500px] mb-6 flex flex-col overflow-hidden shadow-2xl"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary-500 to-primary-700 p-4 flex items-center justify-between">
@@ -58,34 +58,40 @@ const ChatWidget = ({ isOpen, toggle }) => {
             </div>
 
             {/* Messages */}
-            <div 
+            <div
               ref={scrollRef}
-              className="flex-1 p-4 space-y-4 overflow-y-auto bg-black/20 scrollbar-hide"
+              className="flex-1 p-4 space-y-4 overflow-y-auto scrollbar-hide"
+              style={{ background: 'var(--bg-surface)' }}
             >
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border 
-                    ${msg.role === 'user' ? 'bg-primary-500/20 border-primary-500/30' : 'bg-white/10 border-white/20'}`}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border 
+                      ${msg.role === 'user' ? 'bg-primary-500/20 border-primary-500/30' : 'border-primary-500/20'}`}
+                    style={msg.role !== 'user' ? { background: 'var(--bg-surface-hover)' } : {}}
                   >
                     {msg.role === 'user' ? <User size={16} className="text-primary-500" /> : <Sparkles size={16} className="text-primary-500" />}
                   </div>
-                  <div className={`glass-card !rounded-2xl p-3 max-w-[80%] 
-                    ${msg.role === 'user' ? '!bg-primary-500/10 !rounded-tr-none' : '!bg-white/5 !rounded-tl-none'}`}
+                  <div
+                    className={`glass-card !rounded-2xl p-3 max-w-[80%] ${msg.role === 'user' ? '!bg-primary-500/10 !rounded-tr-none' : '!rounded-tl-none'}`}
                   >
-                    <p className="text-xs leading-relaxed text-white">{msg.content}</p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>{msg.content}</p>
                   </div>
                 </div>
               ))}
               {isLoading && (
                 <div className="flex gap-2 animate-pulse">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center border border-primary-500/20"
+                    style={{ background: 'var(--bg-surface-hover)' }}
+                  >
                     <Sparkles size={16} className="text-primary-500" />
                   </div>
-                  <div className="glass-card !bg-white/5 !rounded-tl-none p-3">
+                  <div className="glass-card !rounded-tl-none p-3">
                     <div className="flex gap-1">
-                      <div className="w-1 h-1 bg-white/40 rounded-full animate-bounce"></div>
-                      <div className="w-1 h-1 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-1 h-1 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                      <div className="w-1 h-1 rounded-full animate-bounce" style={{ background: 'var(--text-muted)' }} />
+                      <div className="w-1 h-1 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ background: 'var(--text-muted)' }} />
+                      <div className="w-1 h-1 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ background: 'var(--text-muted)' }} />
                     </div>
                   </div>
                 </div>
@@ -93,19 +99,19 @@ const ChatWidget = ({ isOpen, toggle }) => {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/5">
-              <form 
+            <div className="p-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <form
                 onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
                 className="relative"
               >
-                <input 
+                <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask me anything..." 
-                  className="input-field w-full pr-12 text-sm focus:border-primary-500/50"
+                  placeholder="Ask me anything..."
+                  className="input-field w-full pr-12 text-sm"
                   disabled={isLoading}
                 />
-                <button 
+                <button
                   type="submit"
                   disabled={isLoading || !input.trim()}
                   className="absolute right-2 top-1.5 p-1.5 bg-primary-500 hover:bg-primary-400 rounded-lg text-black transition-colors cursor-pointer disabled:opacity-50"
@@ -118,10 +124,10 @@ const ChatWidget = ({ isOpen, toggle }) => {
         )}
       </AnimatePresence>
 
-      <button 
+      <button
         onClick={toggle}
         className={`p-4 rounded-2xl shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 group flex items-center gap-3 cursor-pointer
-          ${isOpen ? 'bg-white text-black' : 'bg-primary-500 text-black shadow-primary-500/30'}
+          ${isOpen ? 'bg-primary-500/20 text-primary-500 border border-primary-500/30' : 'bg-primary-500 text-black shadow-primary-500/30'}
         `}
       >
         {isOpen ? <MessageCircle size={24} /> : (
